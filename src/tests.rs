@@ -18,7 +18,7 @@ fn test_naive_circuit_setup_and_sync_prove() {
         _marker: PhantomData,
     };
 
-    prove_and_verify_circuit::<_, _, PlonkCsWidth4WithNextStepAndCustomGatesParams>(circuit)
+    prove_and_verify_circuit::<_, _, PlonkCsWidth4WithNextStepAndCustomGatesParams, false>(circuit)
         .unwrap();
 }
 

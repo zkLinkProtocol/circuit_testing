@@ -18,7 +18,7 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
-pub fn prove_and_verify_circuit<E: Engine, C: Circuit<E>, P: PlonkConstraintSystemParams<E>>(
+pub fn prove_and_verify_circuit<E: Engine, C: Circuit<E>, P: PlonkConstraintSystemParams<E>, const ENABLE_TEST: bool>(
     circuit: C,
 ) -> Result<(), SynthesisError> {
     let worker = Worker::new();
@@ -26,7 +26,7 @@ pub fn prove_and_verify_circuit<E: Engine, C: Circuit<E>, P: PlonkConstraintSyst
     // let assembly = generate_testing_assembly::<_, _, P>(&circuit)?;
     println!("Synthesizing setup");
     let setup = generate_setup_for_circuit::<_, _, P>(&circuit, &worker)?;
-    let crs_mons = get_trusted_setup::<E>(setup.n + 1);
+    let crs_mons = get_trusted_setup::<E, ENABLE_TEST>(setup.n + 1, &worker);
     println!("Genereting proof");
     let proof = assembly
         .create_proof::<C, RollingKeccakTranscript<E::Fr>>(&worker, &setup, &crs_mons, None)?;
@@ -47,6 +47,7 @@ pub fn prove_and_verify_circuit_for_params<
     C: Circuit<E>,
     P: PlonkConstraintSystemParams<E>,
     T: Transcript<E::Fr>,
+    const ENABLE_TEST: bool
 >(
     circuit: C,
     transcript_params: Option<T::InitializationParameters>,
@@ -55,7 +56,8 @@ pub fn prove_and_verify_circuit_for_params<
     // let assembly = generate_testing_assembly::<_, _, P>(&circuit)?;
     println!("Synthesizing setup");
     let setup = generate_setup_for_circuit::<_, _, P>(&circuit, &worker)?;
-    let crs_mons = get_trusted_setup::<E>(setup.n + 1);
+    let crs_mons = get_trusted_setup::<E, ENABLE_TEST>(setup.n + 1, &worker);
+
     println!("Genereting proof");
     let assembly = generate_proving_assembly::<_, _, P>(&circuit)?;
     let proof =
@@ -69,13 +71,14 @@ pub fn prove_and_verify_circuit_for_params<
     Ok((proof, vk))
 }
 
-pub fn create_vk<E: Engine, C: Circuit<E>, P: PlonkConstraintSystemParams<E>>(
+pub fn create_vk<E: Engine, C: Circuit<E>, P: PlonkConstraintSystemParams<E>, const ENABLE_TEST: bool>(
     circuit: C,
 ) -> Result<VerificationKey<E, C>, SynthesisError> {
     let worker = Worker::new();
     println!("Synthesizing setup");
     let setup = generate_setup_for_circuit::<_, _, P>(&circuit, &worker)?;
-    let crs_mons = get_trusted_setup::<E>(setup.n + 1);
+    let crs_mons = get_trusted_setup::<E, ENABLE_TEST>(setup.n + 1, &worker);
+
     println!("Generating verification key");
     let vk = VerificationKey::from_setup(&setup, &worker, &crs_mons)?;
 
@@ -86,6 +89,7 @@ pub fn create_vk_for_padding_size_log_2<
     E: Engine,
     C: Circuit<E>,
     P: PlonkConstraintSystemParams<E>,
+    const ENABLE_TEST: bool
 >(
     circuit: C,
     size_log_2: usize,
@@ -95,7 +99,8 @@ pub fn create_vk_for_padding_size_log_2<
     let setup =
         generate_setup_for_circuit_for_size_log_2::<_, _, P>(&circuit, &worker, size_log_2)?;
     assert_eq!(setup.n + 1, 1 << size_log_2);
-    let crs_mons = get_trusted_setup::<E>(setup.n + 1);
+    let crs_mons = get_trusted_setup::<E, ENABLE_TEST>(setup.n + 1, &worker);
+
     println!("Generating verification key");
     let vk = VerificationKey::from_setup(&setup, &worker, &crs_mons)?;
 
@@ -107,6 +112,7 @@ pub fn prove_only_circuit_for_params<
     C: Circuit<E>,
     P: PlonkConstraintSystemParams<E>,
     T: Transcript<E::Fr>,
+    const ENABLE_TEST: bool
 >(
     circuit: C,
     transcript_params: Option<T::InitializationParameters>,
@@ -122,7 +128,8 @@ pub fn prove_only_circuit_for_params<
         generate_setup_for_circuit::<_, _, P>(&circuit, &worker)?
     };
     println!("Loading setup");
-    let crs_mons = get_trusted_setup::<E>(setup.n + 1);
+    let crs_mons = get_trusted_setup::<E, ENABLE_TEST>(setup.n + 1, &worker);
+
     println!("Genereting proof");
     let assembly = if let Some(size_log_2) = size_log_2 {
         generate_proving_assembly_for_size_log_2::<_, _, P>(&circuit, size_log_2)?
@@ -225,14 +232,17 @@ fn generate_testing_assembly<E: Engine, C: Circuit<E>, P: PlonkConstraintSystemP
     Ok(assembly)
 }
 
-pub fn get_trusted_setup<E: Engine>(size: usize) -> Crs<E, CrsForMonomialForm> {
+pub fn get_trusted_setup<E: Engine, const ENABLE_TEST: bool>(size: usize, worker: &Worker) -> Crs<E, CrsForMonomialForm> {
     assert!(size.is_power_of_two());
 
-    let crs_file_str = std::env::var("CRS_FILE").unwrap_or("setup_2^26.key".to_string());
-    println!("loading keys from {}", crs_file_str);
-    let file = File::open(crs_file_str).expect("File not found");
-    let mut crs_mons = Crs::<E, CrsForMonomialForm>::read(file).unwrap();
-    Arc::get_mut(&mut crs_mons.g1_bases).unwrap().truncate(size);
-
-    crs_mons
+    if ENABLE_TEST {
+        Crs::<E, CrsForMonomialForm>::crs_42(size, worker)
+    } else {
+        let crs_file_str = std::env::var("CRS_FILE").unwrap_or("setup_2^26.key".to_string());
+        println!("loading keys from {}", crs_file_str);
+        let file = File::open(crs_file_str).expect("File not found");
+        let mut crs_mons = Crs::<E, CrsForMonomialForm>::read(file).unwrap();
+        Arc::get_mut(&mut crs_mons.g1_bases).unwrap().truncate(size);
+        crs_mons
+    }
 }
