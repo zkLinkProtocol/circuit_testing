@@ -29,7 +29,7 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "bellman_ce"
 version = "0.3.2"
-source = "git+https://github.com/zkLinkProtocol/bellman?branch=dev#3aa6226d04d60c539ff4ee480479ac5b92871a20"
+source = "git+https://github.com/zkLinkProtocol/bellman?branch=dev#8a8d54c472c6ca63b65b2a12cca2054aa51d9137"
 dependencies = [
  "arrayvec 0.7.4",
  "bit-vec",
@@ -61,7 +61,7 @@ dependencies = [
 [[package]]
 name = "blake2s_const"
 version = "0.6.0"
-source = "git+https://github.com/zkLinkProtocol/bellman?branch=dev#3aa6226d04d60c539ff4ee480479ac5b92871a20"
+source = "git+https://github.com/zkLinkProtocol/bellman?branch=dev#8a8d54c472c6ca63b65b2a12cca2054aa51d9137"
 dependencies = [
  "arrayref",
  "arrayvec 0.5.2",
